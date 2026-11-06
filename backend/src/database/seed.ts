@@ -6,7 +6,7 @@ export function seedIfEmpty(db: Db) {
         count: number;
     };
     if (row.count === 0) {
-        seedIfEmpty(db);
+        seed(db);
     }
 }
  
@@ -48,9 +48,9 @@ function seed(db: Db) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         [
-          [1, 5, 'Refrigerator', 200, null, 'none', null, 1, 'running'],
-          [2, 1, 'Lights', 100, null, 'none', null, 1, 'running'],
-          [3, 1, 'Air Conditioner', 1300, 800, 'reduce', 4, 1, 'running'],
+          [1, 5, 'Refrigerator', 200, null, 'none', null, 1, 'on'],
+          [2, 1, 'Lights', 100, null, 'none', null, 1, 'on'],
+          [3, 1, 'Air Conditioner', 1300, 800, 'reduce', 4, 1, 'on'],
           [4, 6, 'Water Heater', 3000, null, 'delay', 3, 0, 'off'],
           [5, 5, 'Oven', 2000, null, 'delay', 2, 0, 'off'],
           [6, 6, 'Washing Machine', 500, null, 'delay', 1, 0, 'off'],

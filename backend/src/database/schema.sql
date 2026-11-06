@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS appliances (
     adjustment_order INTEGER UNIQUE,
     requested_on INTEGER NOT NULL DEFAULT 0 CHECK (requested_on IN (0, 1)),
     state TEXT NOT NULL DEFAULT 'off'
-        CHECK (state IN ('off', 'running', 'delayed', 'reduced', 'faulted')),
-    is_prioritized INTEGER NOT NULL DEFAULT 0 CHECK (is_prioritized IN (0, 1)),
+        CHECK (state IN ('off', 'on', 'delayed', 'reduced', 'faulted')),
+    priority_order INTEGER UNIQUE CHECK (priority_order > 0),
     CHECK ((adjustment = 'none') = (adjustment_order IS NULL)),
     CHECK ((adjustment = 'reduce') = (reduced_power IS NOT NULL))
 );
