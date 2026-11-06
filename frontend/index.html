@@ -1,10 +1,136 @@
 <!doctype html>
-<html>
+<html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
-    <title>Smart Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>System Health | Smart Home Power Management</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+        background: #f5f7fb;
+        color: #17243b;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; }
+      .page { max-width: 920px; margin: 0 auto; padding: 54px 24px; }
+      .eyebrow { color: #476681; font-size: 12px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { margin: 12px 0 8px; font-size: clamp(27px, 4vw, 38px); letter-spacing: -.035em; }
+      .intro { margin: 0 0 32px; color: #64748b; line-height: 1.7; }
+      .grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 20px; }
+      .panel { background: #fff; border: 1px solid #e3e9f2; border-radius: 16px; padding: 27px; box-shadow: 0 8px 30px rgb(23 36 59 / 4%); }
+      .label { margin: 0 0 13px; color: #64748b; font-size: 13px; font-weight: 650; }
+      .status-line { display: flex; align-items: center; gap: 12px; margin: 7px 0 12px; }
+      .dot { display: inline-block; width: 11px; height: 11px; flex: none; border-radius: 50%; background: #94a3b8; box-shadow: 0 0 0 5px #f1f5f9; }
+      .dot.ok { background: #159a62; box-shadow: 0 0 0 5px #e4f7ef; }
+      .dot.error { background: #db4545; box-shadow: 0 0 0 5px #ffeded; }
+      .dot.checking { background: #d49a31; box-shadow: 0 0 0 5px #fff3da; }
+      .status-text { font-size: 25px; font-weight: 750; line-height: 1.35; }
+      .muted { color: #64748b; font-size: 14px; line-height: 1.65; }
+      .details { display: grid; gap: 16px; margin: 22px 0; }
+      .detail-row { border-top: 1px solid #edf1f6; padding-top: 13px; }
+      .detail-row dt { margin: 0 0 6px; font-size: 12px; color: #64748b; }
+      .detail-row dd { margin: 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+      code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+      .method { display: inline-block; padding: 3px 8px; border-radius: 6px; color: #146b42; background: #e4f7ee; font-size: 12px; font-weight: 800; }
+      .button { appearance: none; border: 0; border-radius: 9px; background: #1761b4; padding: 11px 17px; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; }
+      .button:hover { background: #104d93; }
+      .button:disabled { opacity: .55; cursor: wait; }
+      pre { margin: 12px 0 0; padding: 18px; background: #14233a; border-radius: 10px; color: #d8e7fb; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 82px; }
+      .note { margin-top: 18px; padding: 14px 16px; background: #f5f8fc; border-radius: 10px; line-height: 1.65; color: #54667e; font-size: 13px; }
+      .footer { margin-top: 25px; font-size: 12px; color: #8a98ab; }
+      @media (max-width: 720px) {
+        .page { padding: 32px 16px; }
+        .grid { grid-template-columns: 1fr; }
+        .panel { padding: 22px; }
+      }
+    </style>
   </head>
   <body>
-    <h1>System is running</h1>
+    <main class="page">
+      <div class="eyebrow">Smart Home Power Management System</div>
+      <h1>系統連線檢查 <span style="color:#7a8da3; font-weight:500;">/ System Health</span></h1>
+      <p class="intro">第一個前後端串接：使用 <strong>GET /api/health</strong> 確認 NestJS Backend 是否正常運作。</p>
+
+      <div class="grid">
+        <section class="panel" aria-labelledby="status-title">
+          <h2 id="status-title" class="label">Backend Connection / 後端連線狀態</h2>
+          <div class="status-line" aria-live="polite" aria-atomic="true">
+            <span id="status-dot" class="dot" aria-hidden="true"></span>
+            <span id="status-text" class="status-text">尚未檢查 / Not checked</span>
+          </div>
+          <p id="status-message" class="muted">頁面載入後會自動發送 GET 請求。</p>
+
+          <dl class="details">
+            <div class="detail-row"><dt>Endpoint</dt><dd><code>/api/health</code></dd></div>
+            <div class="detail-row"><dt>Last Checked / 最後檢查時間</dt><dd id="last-checked">—</dd></div>
+            <div class="detail-row"><dt>HTTP Status</dt><dd id="http-status">—</dd></div>
+          </dl>
+          <button id="check-button" class="button" type="button">重新檢查 / Check again</button>
+        </section>
+
+        <section class="panel" aria-labelledby="api-title">
+          <h2 id="api-title" class="label">API Reference / API 說明</h2>
+          <div class="detail-row"><dt>Method</dt><dd><span class="method">GET</span></dd></div>
+          <div class="detail-row" style="margin-top:14px;"><dt>Path</dt><dd><code>/api/health</code></dd></div>
+          <div class="detail-row" style="margin-top:14px;"><dt>Expected Response / 預期結果</dt><dd><code>200 OK</code></dd></div>
+          <pre id="response-body" aria-label="API response">{ "status": "ok" }</pre>
+          <p class="note">成功時，後端回傳 <code>{"status":"ok"}</code>。此 API 僅檢查服務是否回應，不代表電器或資料庫狀態。</p>
+        </section>
+      </div>
+      <p class="footer">請透過 <code>http://localhost:3000</code> 開啟本頁，並先啟動 NestJS / Docker；不要直接使用 file:// 開啟 HTML。</p>
+    </main>
+
+    <script>
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      const statusMessage = document.getElementById('status-message');
+      const lastChecked = document.getElementById('last-checked');
+      const httpStatus = document.getElementById('http-status');
+      const responseBody = document.getElementById('response-body');
+      const checkButton = document.getElementById('check-button');
+
+      async function checkHealth() {
+        checkButton.disabled = true;
+        statusDot.className = 'dot checking';
+        statusText.textContent = '檢查中 / Checking…';
+        statusMessage.textContent = '正在呼叫 GET /api/health';
+        httpStatus.textContent = '—';
+
+        try {
+          const response = await fetch('/api/health', {
+            method: 'GET',
+            cache: 'no-store',
+            headers: { Accept: 'application/json' }
+          });
+
+          httpStatus.textContent = `${response.status} ${response.statusText}`.trim();
+          const data = await response.json();
+          responseBody.textContent = JSON.stringify(data, null, 2);
+
+          if (response.ok && data.status === 'ok') {
+            statusDot.className = 'dot ok';
+            statusText.textContent = '已連線 / Connected';
+            statusMessage.textContent = 'NestJS Backend 回應正常。';
+          } else {
+            statusDot.className = 'dot error';
+            statusText.textContent = '回應異常 / Unexpected response';
+            statusMessage.textContent = 'HTTP 請求已回應，但未取得預期的 {"status":"ok"}。';
+          }
+        } catch (error) {
+          statusDot.className = 'dot error';
+          statusText.textContent = '連線失敗 / Connection failed';
+          statusMessage.textContent = '無法取得 API 回應。請確認後端已啟動，並從 http://localhost:3000 開啟網頁。';
+          responseBody.textContent = String(error instanceof Error ? error.message : error);
+        } finally {
+          lastChecked.textContent = new Date().toLocaleString('zh-TW', { hour12: false });
+          checkButton.disabled = false;
+        }
+      }
+
+      checkButton.addEventListener('click', checkHealth);
+      checkHealth();
+    </script>
   </body>
 </html>
