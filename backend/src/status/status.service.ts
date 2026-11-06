@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AppliancesRepository } from '../appliances/appliances.repository.js';
-import { HomeRepository } from ',,/home/home.repository.js';
+import { HomeRepository } from '../home/home.repository.js';
 import { currentPower, RESTORE_MARGIN, totalPower } from '../power-management/rules/power.js';
 import { RoomsRepository } from '../rooms/rooms.repository.js';
 
