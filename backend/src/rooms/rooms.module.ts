@@ -5,4 +5,4 @@ import { RoomsRepository } from './rooms.repository.js';
     providers: [RoomsRepository],
     exports: [RoomsRepository],
 })
-export class RoomModule {}
+export class RoomsModule {}
