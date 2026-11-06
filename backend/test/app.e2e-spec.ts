@@ -7,6 +7,8 @@ import { AppModule } from './../src/app.module.js';
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
+  process.env.DATABASE_PATH = ':memory:';
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
