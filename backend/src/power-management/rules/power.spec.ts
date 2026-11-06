@@ -1,5 +1,5 @@
-import type { Appliance } from ',,/,,/appliances/appliance.js';
-import { currentPower, totalPower } from ',/power.js';
+import type { Appliance } from '../../appliances/appliances.js';
+import { currentPower, totalPower } from './power.js';
 
 function appliance(overrides: Partial<Appliance>): Appliance {
     return {
@@ -7,7 +7,7 @@ function appliance(overrides: Partial<Appliance>): Appliance {
         roomId: 1,
         name: 'Test',
         ratedPower: 1300,
-        reducePower: 800,
+        reducedPower: 800,
         adjustment: 'reduce',
         adjustmentOrder: 1,
         requestedOn: true,
