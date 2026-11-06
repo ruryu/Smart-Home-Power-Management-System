@@ -6,5 +6,8 @@ services:
     volumes:
       - app-data:/app/data
 
+    environment:
+      DATABASE_PATH: /app/data/shpms.db
+
 volumes:
   app-data:
