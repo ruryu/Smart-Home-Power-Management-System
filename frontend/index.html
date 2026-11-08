@@ -1,136 +1,281 @@
 <!doctype html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>System Health | Smart Home Power Management</title>
-    <style>
-      :root {
-        color-scheme: light;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
-        background: #f5f7fb;
-        color: #17243b;
-      }
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="智慧家庭電力管理系統，從日常生活出發，協助你了解家的用電狀態。">
+  <title>居家用電｜智慧家庭電力管理</title>
+  <style>
+    :root {
+      --paper: #f8f6f0;
+      --cream: #eee8dd;
+      --white: #fdfcf8;
+      --ink: #292c28;
+      --muted: #6e7168;
+      --accent: #6b6654;
+      --line: #dcd9d0;
+      --green: #56735d;
+      --red: #a44639;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .notice {
+      min-height: 33px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #343a32;
+      color: #f3efe7;
+      font-size: 11px;
+      letter-spacing: .14em;
+    }
+    .header {
+      padding: 22px max(32px, calc((100vw - 1200px)/2));
+      min-height: 88px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-mark {
+      height: 40px; width: 40px; display: grid; place-items: center;
+      border: 1px solid #858471; border-radius: 50%;
+      font-family: Georgia, "Noto Serif TC", serif;
+      font-size: 20px;
+      color: #555747;
+    }
+    .brand-name { font-size: 19px; font-weight: 700; letter-spacing: .08em; }
+    .brand-caption { display: block; color: #84837a; font-size: 10px; letter-spacing: .16em; margin-top: 3px; }
+    .nav { display: flex; align-items: center; gap: 34px; font-size: 13px; }
+    .nav a { padding: 4px 0; border-bottom: 1px solid transparent; }
+    .nav a:hover, .nav a:focus-visible { border-color: var(--ink); }
+    .nav a:first-child { border-color: #b6afa0; }
+    .main { width: min(1200px, calc(100% - 64px)); margin: auto; }
+    .hero {
+      display: grid; grid-template-columns: .92fr 1.08fr;
+      min-height: 510px;
+      background: var(--cream);
+      margin-top: 38px;
+    }
+    .hero-copy {
+      display: flex; flex-direction: column; align-items: flex-start;
+      justify-content: center;
+      padding: clamp(30px, 4.2vw, 62px);
+    }
+    .eyebrow { font-size: 10px; letter-spacing: .23em; font-weight: 600; color: #777565; }
+    .hero h1 {
+      font-family: "Noto Serif TC", "Songti TC", "PMingLiU", Georgia, serif;
+      font-size: clamp(33px, 3.2vw, 46px);
+      font-weight: 500; line-height: 1.48; letter-spacing: .03em;
+      margin: 27px 0 18px;
+    }
+    .hero h1 em { font-style: normal; color: #7d7464; }
+    .hero p { font-size: 14px; line-height: 2.05; letter-spacing: .02em; color: #626356; max-width: 350px; margin: 0 0 28px; }
+    .hero-link { background: #3d453b; color: #fff; padding: 13px 29px; font-size: 12px; letter-spacing: .1em; transition: background .2s; }
+    .hero-link:hover { background: #575f50; }
+    .hero-image {
+      position: relative; overflow: hidden;
+      background: #c6b39d;
+      background-image: linear-gradient(135deg, rgba(106,79,51,.08), rgba(38,39,32,.2)), url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200');
+      background-size: cover; background-position: 48% center;
+      min-height: 510px;
+    }
+    .hero-image::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 55%, rgba(30,29,23,.22));
+      pointer-events: none;
+    }
+    .image-caption {
+      position: absolute; bottom: 30px; left: 34px; color: white;
+      z-index: 1; font-size: 11px; letter-spacing: .18em; text-shadow: 0 1px 4px #4448;
+    }
+    .section-intro { padding: 72px 4px 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+    .section-intro h2 { font-family: "Noto Serif TC", "Songti TC", "PMingLiU", Georgia, serif; font-size: clamp(26px, 3vw, 34px); font-weight: 500; margin: 12px 0; }
+    .section-intro p { max-width: 350px; font-size: 13px; line-height: 1.8; color: var(--muted); margin: 0 0 9px; }
+    .features { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3,1fr); }
+    .feature { padding: 26px 34px 46px 2px; }
+    .feature + .feature { padding-left: 30px; border-left: 1px solid var(--line); }
+    .feature .index { color: #8d8a7e; font-size: 12px; letter-spacing: .1em; }
+    .feature h3 { font-size: 17px; font-weight: 600; margin: 23px 0 12px; letter-spacing: .06em; }
+    .feature p { font-size: 13px; line-height: 1.85; color: var(--muted); margin: 0; }
+    .health {
+      margin-top: 45px;
+      background: var(--white);
+      padding: 50px clamp(24px, 5vw, 65px) 40px;
+      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    }
+    .health-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; }
+    .health h2 { font-family: "Noto Serif TC", "Songti TC", "PMingLiU", Georgia, serif; font-size: 30px; font-weight: 500; margin: 13px 0 10px; }
+    .health-sub { font-size: 13px; line-height: 1.9; color: var(--muted); margin: 0; }
+    .health-state { display: flex; align-items: center; gap: 10px; margin-top: 28px; font-size: 17px; }
+    .indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #a59f90; }
+    .indicator.online { background: var(--green); }
+    .indicator.offline { background: var(--red); }
+    .health-result { min-height: 25px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .health-actions { text-align: right; display: flex; align-items: flex-end; flex-direction: column; gap: 12px; }
+    .refresh { min-width: 122px; padding: 12px 17px; background: transparent; border: 1px solid #858578; color: var(--ink); font-size: 12px; cursor: pointer; }
+    .refresh:hover { background: #eeece5; }
+    .refresh:disabled { opacity: .55; cursor: wait; }
+    .checked-time { font-size: 11px; color: #8c8b80; }
+    details { border-top: 1px solid var(--line); margin-top: 34px; padding-top: 18px; }
+    summary { cursor: pointer; font-size: 12px; color: #61675d; user-select: none; }
+    .tech { padding-top: 18px; font-size: 12px; line-height: 1.9; color: #686c64; }
+    .tech strong { color: var(--ink); font-weight: 500; }
+    pre { background: #f0eee8; color: #42493f; border: 1px solid #e5e1d9; padding: 15px 17px; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .footer { display: flex; justify-content: space-between; gap: 18px; padding: 35px 0 48px; font-size: 11px; letter-spacing: .04em; color: #8b8c81; }
+    @media (max-width: 800px) {
+      .header { padding: 19px 24px; }
+      .nav { gap: 17px; }
+      .main { width: calc(100% - 32px); }
+      .hero { grid-template-columns: 1fr; margin-top: 16px; }
+      .hero-copy { padding: 53px 28px; }
+      .hero-image { min-height: 290px; }
+      .section-intro { display: block; padding-top: 48px; }
+      .features { grid-template-columns: 1fr; }
+      .feature, .feature + .feature { padding: 18px 0 24px; border-left: none; border-bottom: 1px solid var(--line); }
+      .health { padding: 37px 25px; }
+      .health-top { flex-direction: column; }
+      .health-actions { align-items: flex-start; text-align: left; }
+    }
+    @media (max-width: 480px) {
+      .brand-caption { display: none; }
+      .brand-name { font-size: 16px; }
+      .brand-mark { height: 34px; width: 34px; font-size: 17px; }
+      .nav { gap: 12px; font-size: 11px; }
+      .hero h1 { font-size: 33px; }
+      .footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="notice">讓家裡的用電，回到剛剛好的節奏</div>
+  <header class="header">
+    <a class="brand" href="#top" aria-label="回到首頁">
+      <span class="brand-mark" aria-hidden="true">家</span>
+      <span><span class="brand-name">居家用電</span><span class="brand-caption">SMART HOME POWER MANAGEMENT</span></span>
+    </a>
+    <nav class="nav" aria-label="網站導覽">
+      <a href="#top">首頁</a>
+      <a href="#about">專題介紹</a>
+      <a href="#connection">系統狀態</a>
+    </nav>
+  </header>
 
-      * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; }
-      .page { max-width: 920px; margin: 0 auto; padding: 54px 24px; }
-      .eyebrow { color: #476681; font-size: 12px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-      h1 { margin: 12px 0 8px; font-size: clamp(27px, 4vw, 38px); letter-spacing: -.035em; }
-      .intro { margin: 0 0 32px; color: #64748b; line-height: 1.7; }
-      .grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 20px; }
-      .panel { background: #fff; border: 1px solid #e3e9f2; border-radius: 16px; padding: 27px; box-shadow: 0 8px 30px rgb(23 36 59 / 4%); }
-      .label { margin: 0 0 13px; color: #64748b; font-size: 13px; font-weight: 650; }
-      .status-line { display: flex; align-items: center; gap: 12px; margin: 7px 0 12px; }
-      .dot { display: inline-block; width: 11px; height: 11px; flex: none; border-radius: 50%; background: #94a3b8; box-shadow: 0 0 0 5px #f1f5f9; }
-      .dot.ok { background: #159a62; box-shadow: 0 0 0 5px #e4f7ef; }
-      .dot.error { background: #db4545; box-shadow: 0 0 0 5px #ffeded; }
-      .dot.checking { background: #d49a31; box-shadow: 0 0 0 5px #fff3da; }
-      .status-text { font-size: 25px; font-weight: 750; line-height: 1.35; }
-      .muted { color: #64748b; font-size: 14px; line-height: 1.65; }
-      .details { display: grid; gap: 16px; margin: 22px 0; }
-      .detail-row { border-top: 1px solid #edf1f6; padding-top: 13px; }
-      .detail-row dt { margin: 0 0 6px; font-size: 12px; color: #64748b; }
-      .detail-row dd { margin: 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
-      code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
-      .method { display: inline-block; padding: 3px 8px; border-radius: 6px; color: #146b42; background: #e4f7ee; font-size: 12px; font-weight: 800; }
-      .button { appearance: none; border: 0; border-radius: 9px; background: #1761b4; padding: 11px 17px; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; }
-      .button:hover { background: #104d93; }
-      .button:disabled { opacity: .55; cursor: wait; }
-      pre { margin: 12px 0 0; padding: 18px; background: #14233a; border-radius: 10px; color: #d8e7fb; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 82px; }
-      .note { margin-top: 18px; padding: 14px 16px; background: #f5f8fc; border-radius: 10px; line-height: 1.65; color: #54667e; font-size: 13px; }
-      .footer { margin-top: 25px; font-size: 12px; color: #8a98ab; }
-      @media (max-width: 720px) {
-        .page { padding: 32px 16px; }
-        .grid { grid-template-columns: 1fr; }
-        .panel { padding: 22px; }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="page">
-      <div class="eyebrow">Smart Home Power Management System</div>
-      <h1>系統連線檢查 <span style="color:#7a8da3; font-weight:500;">/ System Health</span></h1>
-      <p class="intro">第一個前後端串接：使用 <strong>GET /api/health</strong> 確認 NestJS Backend 是否正常運作。</p>
-
-      <div class="grid">
-        <section class="panel" aria-labelledby="status-title">
-          <h2 id="status-title" class="label">Backend Connection / 後端連線狀態</h2>
-          <div class="status-line" aria-live="polite" aria-atomic="true">
-            <span id="status-dot" class="dot" aria-hidden="true"></span>
-            <span id="status-text" class="status-text">尚未檢查 / Not checked</span>
-          </div>
-          <p id="status-message" class="muted">頁面載入後會自動發送 GET 請求。</p>
-
-          <dl class="details">
-            <div class="detail-row"><dt>Endpoint</dt><dd><code>/api/health</code></dd></div>
-            <div class="detail-row"><dt>Last Checked / 最後檢查時間</dt><dd id="last-checked">—</dd></div>
-            <div class="detail-row"><dt>HTTP Status</dt><dd id="http-status">—</dd></div>
-          </dl>
-          <button id="check-button" class="button" type="button">重新檢查 / Check again</button>
-        </section>
-
-        <section class="panel" aria-labelledby="api-title">
-          <h2 id="api-title" class="label">API Reference / API 說明</h2>
-          <div class="detail-row"><dt>Method</dt><dd><span class="method">GET</span></dd></div>
-          <div class="detail-row" style="margin-top:14px;"><dt>Path</dt><dd><code>/api/health</code></dd></div>
-          <div class="detail-row" style="margin-top:14px;"><dt>Expected Response / 預期結果</dt><dd><code>200 OK</code></dd></div>
-          <pre id="response-body" aria-label="API response">{ "status": "ok" }</pre>
-          <p class="note">成功時，後端回傳 <code>{"status":"ok"}</code>。此 API 僅檢查服務是否回應，不代表電器或資料庫狀態。</p>
-        </section>
+  <main id="top" class="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow">SMART LIVING · SIMPLER POWER</div>
+        <h1 id="hero-title">家裡的每一度電，<br><em>都有安排。</em></h1>
+        <p>從日常用電出發，讓電器的使用更有秩序。看見家的電力狀態，也了解系統每一次調整的原因。</p>
+        <a href="#connection" class="hero-link">查看系統連線狀態</a>
       </div>
-      <p class="footer">請透過 <code>http://localhost:3000</code> 開啟本頁，並先啟動 NestJS / Docker；不要直接使用 file:// 開啟 HTML。</p>
-    </main>
+      <div class="hero-image" role="img" aria-label="明亮自然的現代居家空間">
+        <span class="image-caption">A MORE COMFORTABLE WAY TO LIVE</span>
+      </div>
+    </section>
 
-    <script>
-      const statusDot = document.getElementById('status-dot');
-      const statusText = document.getElementById('status-text');
-      const statusMessage = document.getElementById('status-message');
-      const lastChecked = document.getElementById('last-checked');
-      const httpStatus = document.getElementById('http-status');
-      const responseBody = document.getElementById('response-body');
-      const checkButton = document.getElementById('check-button');
+    <section id="about" aria-labelledby="about-heading">
+      <div class="section-intro">
+        <div>
+          <span class="eyebrow">ABOUT THE PROJECT</span>
+          <h2 id="about-heading">讓用電管理融入日常</h2>
+        </div>
+        <p>這是一個模擬智慧家庭用電的課程專題。以下是系統規劃的核心功能，目前此頁先用來確認前後端連線。</p>
+      </div>
+      <div class="features">
+        <article class="feature"><span class="index">01 / MONITOR</span><h3>掌握家中用電</h3><p>查看總耗電量、電器狀態及電力容量，不必逐台猜測。</p></article>
+        <article class="feature"><span class="index">02 / MANAGE</span><h3>自動安排負載</h3><p>當需求超過容量，由系統依規則延後或降低部分電器的用電。</p></article>
+        <article class="feature"><span class="index">03 / EXPLAIN</span><h3>每個決定都有原因</h3><p>電器被延後、恢復或調整時，使用者可以知道發生了什麼。</p></article>
+      </div>
+    </section>
 
-      async function checkHealth() {
-        checkButton.disabled = true;
-        statusDot.className = 'dot checking';
-        statusText.textContent = '檢查中 / Checking…';
-        statusMessage.textContent = '正在呼叫 GET /api/health';
-        httpStatus.textContent = '—';
+    <section id="connection" class="health" aria-labelledby="health-heading">
+      <div class="health-top">
+        <div>
+          <span class="eyebrow">SYSTEM CONNECTION</span>
+          <h2 id="health-heading">系統連線狀態</h2>
+          <p class="health-sub">確認網站是否能與後端服務正常連線。</p>
+          <div class="health-state" role="status" aria-live="polite" aria-atomic="true">
+            <span id="indicator" class="indicator" aria-hidden="true"></span>
+            <span id="connection-text">正在檢查連線…</span>
+          </div>
+          <p id="connection-description" class="health-result">正在讀取後端狀態。</p>
+        </div>
+        <div class="health-actions">
+          <button id="refresh-button" class="refresh" type="button">重新檢查</button>
+          <span id="last-checked" class="checked-time">尚未檢查</span>
+        </div>
+      </div>
+      <details>
+        <summary>查看 API 技術資訊</summary>
+        <div class="tech">
+          <div><strong>請求方式：</strong>GET</div>
+          <div><strong>路徑：</strong><code>/api/health</code></div>
+          <div><strong>HTTP 狀態：</strong><span id="http-status">—</span></div>
+          <div><strong>回應內容：</strong></div>
+          <pre id="response-body">尚未收到回應</pre>
+          <p>此 API 只檢查後端服務是否回應，不代表所有電器或電力管理功能都已正常運作。</p>
+        </div>
+      </details>
+    </section>
+    <footer class="footer"><span>居家用電 · 智慧家庭電力管理系統</span><span>Human-Centered Smart Home Power Management System</span></footer>
+  </main>
+  <script>
+    const refreshButton = document.getElementById('refresh-button');
+    const indicator = document.getElementById('indicator');
+    const connectionText = document.getElementById('connection-text');
+    const connectionDescription = document.getElementById('connection-description');
+    const httpStatus = document.getElementById('http-status');
+    const responseBody = document.getElementById('response-body');
+    const lastChecked = document.getElementById('last-checked');
 
-        try {
-          const response = await fetch('/api/health', {
-            method: 'GET',
-            cache: 'no-store',
-            headers: { Accept: 'application/json' }
-          });
+    async function checkHealth() {
+      refreshButton.disabled = true;
+      indicator.className = 'indicator';
+      connectionText.textContent = '正在檢查連線…';
+      connectionDescription.textContent = '正在與後端服務建立連線。';
+      httpStatus.textContent = '—';
 
-          httpStatus.textContent = `${response.status} ${response.statusText}`.trim();
-          const data = await response.json();
-          responseBody.textContent = JSON.stringify(data, null, 2);
+      try {
+        const response = await fetch('/api/health', { method: 'GET', cache: 'no-store', headers: { Accept: 'application/json' } });
+        httpStatus.textContent = `${response.status} ${response.statusText}`.trim();
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); } catch { data = null; }
+        responseBody.textContent = data ? JSON.stringify(data, null, 2) : (raw || '（空白回應）');
 
-          if (response.ok && data.status === 'ok') {
-            statusDot.className = 'dot ok';
-            statusText.textContent = '已連線 / Connected';
-            statusMessage.textContent = 'NestJS Backend 回應正常。';
-          } else {
-            statusDot.className = 'dot error';
-            statusText.textContent = '回應異常 / Unexpected response';
-            statusMessage.textContent = 'HTTP 請求已回應，但未取得預期的 {"status":"ok"}。';
-          }
-        } catch (error) {
-          statusDot.className = 'dot error';
-          statusText.textContent = '連線失敗 / Connection failed';
-          statusMessage.textContent = '無法取得 API 回應。請確認後端已啟動，並從 http://localhost:3000 開啟網頁。';
-          responseBody.textContent = String(error instanceof Error ? error.message : error);
-        } finally {
-          lastChecked.textContent = new Date().toLocaleString('zh-TW', { hour12: false });
-          checkButton.disabled = false;
+        if (response.ok && data && data.status === 'ok') {
+          indicator.className = 'indicator online';
+          connectionText.textContent = '服務連線正常';
+          connectionDescription.textContent = '後端服務正在運作，可以正常接收網站請求。';
+        } else {
+          throw new Error('後端回應與預期結果不同。');
         }
+      } catch (error) {
+        indicator.className = 'indicator offline';
+        connectionText.textContent = '目前無法連線';
+        connectionDescription.textContent = '請確認 NestJS 或 Docker 是否已啟動，並從 http://localhost:3000 開啟網頁。';
+        if (httpStatus.textContent === '—') responseBody.textContent = String(error instanceof Error ? error.message : error);
+      } finally {
+        lastChecked.textContent = '最後檢查：' + new Date().toLocaleString('zh-TW', { hour12: false });
+        refreshButton.disabled = false;
       }
-
-      checkButton.addEventListener('click', checkHealth);
-      checkHealth();
-    </script>
-  </body>
+    }
+    refreshButton.addEventListener('click', checkHealth);
+    checkHealth();
+  </script>
+</body>
 </html>
