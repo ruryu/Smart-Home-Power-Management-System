@@ -7,6 +7,7 @@ import { DecisionsRepository } from '../decisions/decisions.repository.js';
 import { HomeRepository } from '../home/home.repository.js';
 import { evaluate } from './rules/evaluate.js';
 import { totalPower } from './rules/power.js';
+import { priorityShortfall } from './rules/priority.js';
 
 // 所有會改變用電的操作都經過這裡：先改使用者的要求，再重新計算每台裝置的狀態
 @Injectable()
@@ -33,6 +34,53 @@ export class PowerManagementService {
 
         this.db.transaction(() => {
             this.appliances.setRequestedOn(id, on);
+            this.reevaluate();
+        })();
+    }
+
+    setPriority(id: number, enabled: boolean): void {
+        const appliance = this.findOrThrow(id);
+
+        if (!enabled) {
+            if (appliance.priorityOrder === null) return;
+            this.db.transaction(() => {
+                this.appliances.setPriorityOrder(id, null);
+                this.decisions.record({
+                    rule: 'B4',
+                    applianceId: id,
+                    action: 'priority-cancel',
+                    reason: `使用者取消 ${appliance.name} 的優先`,
+                });
+                this.reevaluate();
+            })();
+            return;
+        }
+
+        if (appliance.priorityOrder !== null) return;
+        if (appliance.state === 'faulted') {
+            throw conflict('APPLIANCE_FAULTED', '裝置故障中，要先到測試介面修復', { applianceId: id });
+        }
+
+        const { powerLimit } = this.home.get();
+        const shortfall = priorityShortfall(this.appliances.findAll(), id, powerLimit);
+        if (shortfall > 0) {
+            this.decisions.record({
+                rule: 'B4',
+                applianceId: id,
+                action: 'priority-reject',
+                reason: `指定 ${appliance.name} 為優先需要 ${powerLimit + shortfall}W，超過上限 ${powerLimit}W，不足 ${shortfall}W`,
+            });
+            throw conflict('INSUFFICIENT_POWER', `指定為優先後一定會超過上限，不足 ${shortfall}W`, { shortfall });
+        }
+
+        this.db.transaction(() => {
+            this.appliances.setPriorityOrder(id, this.appliances.nextPriorityOrder());
+            this.decisions.record({
+                rule: 'B4',
+                applianceId: id,
+                action: 'priority-accept',
+                reason: `接受 ${appliance.name} 的優先要求`,
+            });
             this.reevaluate();
         })();
     }

@@ -19,6 +19,13 @@ export class PowerManagementController {
         return this.status.getStatus();
     }
 
+    @Put(':id/priority')
+    setPriority(@Param('id', ParseIdPipe) id: number, @Body() body: unknown) {
+        const enabled = parseBooleanField(body, 'enabled');
+        this.power.setPriority(id, enabled);
+        return this.status.getStatus();
+    }
+
     @Delete(':id')
     @HttpCode(204)
     delete(@Param('id', ParseIdPipe) id: number) {

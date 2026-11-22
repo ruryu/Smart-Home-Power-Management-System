@@ -78,6 +78,18 @@ export class AppliancesRepository {
         this.db.prepare('UPDATE appliances SET requested_on = ? WHERE id = ?').run(requestedOn ? 1 : 0, id);
     }
 
+    setPriorityOrder(id: number, priorityOrder: number | null): void {
+        this.db.prepare('UPDATE appliances SET priority_order = ? WHERE id = ?').run(priorityOrder, id);
+    }
+
+    // 新指定的優先排在最後，數字越大代表越晚指定
+    nextPriorityOrder(): number {
+        const row = this.db
+          .prepare('SELECT COALESCE(MAX(priority_order), 0) + 1 AS next FROM appliances')
+          .get() as { next: number };
+        return row.next;
+    }
+
     // 寫回系統計算後的狀態
     saveStates(appliances: Appliance[]): void {
         const update = this.db.prepare(
