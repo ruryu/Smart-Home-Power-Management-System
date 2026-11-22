@@ -74,6 +74,20 @@ export class AppliancesRepository {
         return this.findById(id)!;
     }
 
+    setRequestedOn(id: number, requestedOn: boolean): void {
+        this.db.prepare('UPDATE appliances SET requested_on = ? WHERE id = ?').run(requestedOn ? 1 : 0, id);
+    }
+
+    // 寫回系統計算後的狀態
+    saveStates(appliances: Appliance[]): void {
+        const update = this.db.prepare(
+            'UPDATE appliances SET state = ?, state_reason = ?, priority_order = ? WHERE id = ?',
+        );
+        appliances.forEach((appliance) =>
+            update.run(appliance.state, appliance.reason, appliance.priorityOrder, appliance.id),
+        );
+    }
+
     // 新裝置排在調整順序的最後
     private nextAdjustmentOrder(): number {
         const row = this.db
