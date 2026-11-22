@@ -84,4 +84,43 @@ describe('裝置管理 (e2e)', () => {
       expect(res.body).toEqual({ code: 'ROOM_NOT_FOUND', message: '找不到這個房間', details: { roomId: 99 } });
     });
   });
+
+  describe('PATCH /api/appliances/:id', () => {
+    it('修改名稱和房間', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/appliances/5')
+        .send({ name: 'Big Oven', roomId: 2 })
+        .expect(200);
+      expect(res.body).toMatchObject({ id: 5, name: 'Big Oven', roomId: 2, ratedPower: 2000 });
+    });
+
+    it('只傳一個欄位時，另一個欄位不變', async () => {
+      const res = await request(app.getHttpServer()).patch('/api/appliances/5').send({ name: 'Oven 2' }).expect(200);
+      expect(res.body).toMatchObject({ name: 'Oven 2', roomId: 5 });
+    });
+
+    it('沒有傳欄位回傳 400', async () => {
+      await request(app.getHttpServer()).patch('/api/appliances/5').send({}).expect(400);
+    });
+
+    it('修改用電欄位回傳 400', async () => {
+      const res = await request(app.getHttpServer()).patch('/api/appliances/5').send({ ratedPower: 10 }).expect(400);
+      expect(res.body.details).toEqual(['ratedPower 不能修改，只能修改 name 和 roomId']);
+    });
+
+    it('裝置不存在回傳 404', async () => {
+      const res = await request(app.getHttpServer()).patch('/api/appliances/99').send({ name: 'X' }).expect(404);
+      expect(res.body.code).toBe('APPLIANCE_NOT_FOUND');
+    });
+
+    it('房間不存在回傳 404', async () => {
+      const res = await request(app.getHttpServer()).patch('/api/appliances/5').send({ roomId: 99 }).expect(404);
+      expect(res.body.code).toBe('ROOM_NOT_FOUND');
+    });
+
+    it('id 不是正整數回傳 400', async () => {
+      const res = await request(app.getHttpServer()).patch('/api/appliances/abc').send({ name: 'X' }).expect(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+    });
+  });
 });

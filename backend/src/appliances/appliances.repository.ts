@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DATABASE, type Db } from '../database/database.module.js';
 import type { Adjustment, Appliance, ApplianceState } from './appliances.js';
 import type { CreateApplianceInput } from './create-appliance.js';
+import type { UpdateApplianceInput } from './update-appliance.js';
 
 const COLUMNS = `id, room_id, name, rated_power, reduced_power, adjustment,
                  adjustment_order, requested_on, state, priority_order`;
@@ -61,6 +62,14 @@ export class AppliancesRepository {
           )
           .run(input.roomId, input.name, input.ratedPower, input.reducedPower, input.adjustment, adjustmentOrder);
         return this.findById(Number(result.lastInsertRowid))!;
+    }
+
+    update(id: number, input: UpdateApplianceInput): Appliance {
+        const current = this.findById(id)!;
+        this.db
+          .prepare('UPDATE appliances SET name = ?, room_id = ? WHERE id = ?')
+          .run(input.name ?? current.name, input.roomId ?? current.roomId, id);
+        return this.findById(id)!;
     }
 
     // 新裝置排在調整順序的最後
