@@ -6,6 +6,7 @@ import { AppController } from './app.controller.js';
 import { ApiExceptionFilter } from './common/api-exception.filter.js';
 import { DatabaseModule } from './database/database.module.js';
 import { PowerManagementModule } from './power-management/power-management.module.js';
+import { SimulationModule } from './simulation/simulation.module.js';
 import { StatusModule } from './status/status.module.js';
 
 @Module({
@@ -13,6 +14,7 @@ import { StatusModule } from './status/status.module.js';
     DatabaseModule,
     StatusModule,
     PowerManagementModule,
+    SimulationModule,
     ServeStaticModule.forRoot({
       rootPath: join(import.meta.dirname, '..', '..', 'frontend'),
       exclude: ['/api/{*path}'],

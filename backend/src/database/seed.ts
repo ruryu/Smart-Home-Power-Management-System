@@ -11,7 +11,7 @@ export function seedIfEmpty(db: Db) {
 }
  
 // 清空資料庫後重新寫入資料
-function resetDatabase(db: Db) {
+export function resetDatabase(db: Db) {
     db.transaction(() => {
         db.exec(`
             DELETE FROM decisions;
