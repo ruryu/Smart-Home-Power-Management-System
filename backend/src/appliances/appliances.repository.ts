@@ -88,6 +88,10 @@ export class AppliancesRepository {
         );
     }
 
+    delete(id: number): void {
+        this.db.prepare('DELETE FROM appliances WHERE id = ?').run(id);
+    }
+
     // 新裝置排在調整順序的最後
     private nextAdjustmentOrder(): number {
         const row = this.db

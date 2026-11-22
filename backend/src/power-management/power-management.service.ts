@@ -37,6 +37,14 @@ export class PowerManagementService {
         })();
     }
 
+    deleteAppliance(id: number): void {
+        this.findOrThrow(id);
+        this.db.transaction(() => {
+            this.appliances.delete(id);
+            this.reevaluate();
+        })();
+    }
+
     // 重新計算所有裝置的狀態，並記錄系統做的決定
     reevaluate(): void {
         const home = this.home.get();
