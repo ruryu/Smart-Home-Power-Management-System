@@ -25,4 +25,12 @@ export class HomeRepository {
             comfortThreshold: row.comfort_threshold,
         };
     }
+
+    setIndoorTemperature(temperature: number): void {
+        this.db.prepare('UPDATE home_state SET indoor_temperature = ? WHERE id = 1').run(temperature);
+    }
+
+    setPowerLimit(powerLimit: number): void {
+        this.db.prepare('UPDATE home_state SET power_limit = ? WHERE id = 1').run(powerLimit);
+    }
 }

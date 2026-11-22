@@ -31,6 +31,7 @@ describe('裝置管理 (e2e)', () => {
         requestedOn: false,
         state: 'off',
         priorityOrder: null,
+        reason: null,
       });
     });
 
@@ -121,6 +122,30 @@ describe('裝置管理 (e2e)', () => {
     it('id 不是正整數回傳 400', async () => {
       const res = await request(app.getHttpServer()).patch('/api/appliances/abc').send({ name: 'X' }).expect(400);
       expect(res.body.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('DELETE /api/appliances/:id', () => {
+    it('刪除裝置回傳 204，清單裡就沒有它', async () => {
+      await request(app.getHttpServer()).delete('/api/appliances/6').expect(204);
+      const res = await request(app.getHttpServer()).get('/api/appliances').expect(200);
+      expect(res.body.map((appliance: { id: number }) => appliance.id)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('刪除開啟中的裝置後，自動恢復被延後的裝置', async () => {
+      await request(app.getHttpServer()).put('/api/appliances/4/power').send({ on: true });
+      const delayed = await request(app.getHttpServer()).put('/api/appliances/5/power').send({ on: true });
+      expect(delayed.body.appliances[4].state).toBe('delayed');
+
+      await request(app.getHttpServer()).delete('/api/appliances/4').expect(204);
+      const res = await request(app.getHttpServer()).get('/api/status').expect(200);
+      expect(res.body.totalPower).toBe(3600);
+      expect(res.body.appliances[3]).toMatchObject({ id: 5, state: 'on', reason: '用電已下降，已自動恢復' });
+    });
+
+    it('裝置不存在回傳 404', async () => {
+      const res = await request(app.getHttpServer()).delete('/api/appliances/99').expect(404);
+      expect(res.body.code).toBe('APPLIANCE_NOT_FOUND');
     });
   });
 });

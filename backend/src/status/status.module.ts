@@ -9,5 +9,6 @@ import { StatusService } from './status.service.js';
     imports: [HomeModule, RoomsModule, AppliancesModule],
     controllers: [StatusController],
     providers: [StatusService],
+    exports: [StatusService],
 })
 export class StatusModule {}

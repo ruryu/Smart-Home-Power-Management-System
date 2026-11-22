@@ -1,5 +1,6 @@
 # API 規格
 
+前後端共用的約定。改 API 前先改這份文件，再改程式碼。
 
 ## 0. 共通規則
 
@@ -27,6 +28,7 @@
 | `requestedOn` | boolean | 使用者是否要求開啟 |
 | `state` | 見下表 | 系統實際的狀態 |
 | `priorityOrder` | number \| null | 使用者優先的順序，數字越大代表越晚指定；`null` 代表不是優先裝置 |
+| `reason` | string \| null | 系統為什麼讓這台處於目前狀態，前端可以直接顯示在裝置旁邊；狀態是使用者自己操作的結果時為 `null` |
 
 `state` 只會是下面五種：
 
@@ -51,7 +53,7 @@
 
 ### Status（完整狀態）
 
-`GET /api/status`、`PUT /api/appliances/:id/power`、`PUT /api/appliances/:id/priority` 都回傳這個格式。
+`GET /api/status`、`PUT /api/appliances/:id/power`、`PUT /api/appliances/:id/priority` 和所有測試介面 API 都回傳這個格式。
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
@@ -63,28 +65,31 @@
 | `comfortActive` | boolean | 舒適保護是否啟動中；啟動時冷氣不會被降載 |
 | `unresolvedOverload` | number \| null | 調整完仍超過上限時，超出的瓦數；沒有超標是 `null` |
 | `rooms` | Room[] | 所有房間，依 `id` 排序 |
-| `appliances` | (Appliance & { `currentPower`: number, `reason`: string \| null })[] | 所有裝置，依 `id` 排序，每台多兩個欄位，見下表 |
+| `appliances` | (Appliance & { `currentPower`: number })[] | 所有裝置，依 `id` 排序，每台多一個 `currentPower` 代表目前實際用電 |
 | `warnings` | string[] | 要顯示給使用者看的警告文字，沒有就是空陣列 |
 
-`appliances` 每台多出的欄位：
-
-| 欄位 | 型別 | 說明 |
-|---|---|---|
-| `currentPower` | number | 這台裝置目前實際用電 |
-| `reason` | string \| null | 系統為什麼讓這台處於目前狀態，前端可以直接顯示在裝置旁邊；狀態是使用者自己操作的結果時為 `null` |
-
-`reason` 的範例：
+Appliance 的 `reason` 範例：
 
 | 情況 | `state` | `reason` |
 |---|---|---|
 | 使用者自己開啟或關閉 | `on` / `off` | `null` |
 | 開啟後超過上限，被延後 | `delayed` | `"總用電超過上限 5000W，已延後"` |
 | 超過上限，冷氣被降載 | `reduced` | `"總用電超過上限 5000W，已降載至 800W"` |
-| 室溫過高，冷氣恢復正常 | `on` | `"室溫 29°C 超過 28°C，冷氣維持正常運轉"` |
+| 室溫過高，冷氣恢復正常 | `on` | `"室溫 29°C 超過 28°C，Air Conditioner 維持正常運轉"` |
 | 用電下降，自動恢復 | `on` | `"用電已下降，已自動恢復"` |
+| 指定為優先後恢復 | `on` | `"已指定為優先，維持正常運轉"` |
 | 用電異常 | `faulted` | `"用電異常，已停止運作，請至測試介面修復"` |
 
 > 文字內容由後端決定，前端只負責顯示，不要用 `reason` 的文字判斷狀態，判斷狀態請看 `state`。
+
+`warnings` 可能出現的內容：
+
+| 情況 | 範例 |
+|---|---|
+| 無法解決的超標 | `"總用電超過上限 5000W 共 100W，已無法再調整，暫停接受增加用電的操作"` |
+| 裝置故障 | `"Oven 用電異常，已停止運作，請至測試介面修復"` |
+| 舒適保護啟動 | `"室溫 29°C 超過舒適門檻 28°C，冷氣不會被降載"` |
+| 有裝置被調整 | `"為了不超過上限 5000W，系統已調整：Oven（延後）、Washing Machine（延後）"` |
 
 ### Error（錯誤）
 
@@ -109,12 +114,14 @@
 | `400` | 傳入的資料格式不對 |
 | `404` | 找不到資源 |
 | `409` | 資料格式正確，但目前的狀態不允許，例如會超過用電上限 |
+| `500` | 伺服器發生錯誤 |
 
 所有錯誤代碼：
 
 | code | 狀態碼 | 意思 |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | 傳入資料或路徑的 `:id` 格式不對 |
+| `VALIDATION_ERROR` | 400 | 傳入資料或路徑的 `:id` 格式不對，包含壞掉的 JSON |
+| `NOT_FOUND` | 404 | 找不到這個 API（路徑打錯） |
 | `APPLIANCE_NOT_FOUND` | 404 | 找不到裝置 |
 | `ROOM_NOT_FOUND` | 404 | 找不到房間 |
 | `APPLIANCE_FAULTED` | 409 | 裝置故障中，要先修復 |
@@ -122,6 +129,8 @@
 | `INSUFFICIENT_POWER` | 409 | 指定優先後一定會超過上限 |
 | `ROOM_NAME_TAKEN` | 409 | 房間名稱重複 |
 | `ROOM_NOT_EMPTY` | 409 | 房間裡還有裝置，不能刪除 |
+| `APPLIANCE_NOT_FAULTED` | 409 | 修復沒有故障的裝置 |
+| `INTERNAL_ERROR` | 500 | 伺服器發生錯誤 |
 
 ## 2. 總覽
 
@@ -139,6 +148,12 @@
 | 新增房間 | POST | `/api/rooms` | `{ "name": string }` | `201` Room |
 | 修改房間 | PATCH | `/api/rooms/:id` | `{ "name": string }` | `200` Room |
 | 刪除房間 | DELETE | `/api/rooms/:id` | 無 | `204` 沒有內容 |
+| 決策紀錄 | GET | `/api/decisions` | 無（可加 `?limit=`） | `200` Decision[] |
+| 重置 | POST | `/api/simulation/reset` | 無 | `200` Status |
+| 修改室溫 | PUT | `/api/simulation/temperature` | `{ "indoorTemperature": number }` | `200` Status |
+| 修改用電上限 | PUT | `/api/simulation/power-limit` | `{ "powerLimit": number }` | `200` Status |
+| 模擬裝置用電 | POST | `/api/simulation/appliances/:id/usage` | `{ "power": number }` | `200` Status |
+| 修復裝置 | POST | `/api/simulation/appliances/:id/repair` | 無 | `200` Status |
 
 ## 3. 系統
 
@@ -210,8 +225,8 @@
 
 系統的處理：
 
-- **開啟：** 如果超過上限，系統會依調整順序延後或降載其他裝置，最後仍超標時這台也可能被延後（`state: "delayed"`）。
-- **關閉：** 用電降下來後，系統會自動恢復之前被調整過的裝置，恢復後總用電不超過 `restoreThreshold`。
+- **開啟：** 如果超過上限，系統會依調整順序延後或降載裝置，降到上限以內就停止；剛開啟的這台也可能被延後（`state: "delayed"`）。優先裝置、受舒適保護的冷氣不會被調整。
+- **關閉：** 用電降下來後，系統會依調整的相反順序自動恢復之前被調整過的裝置；恢復後總用電會超過 `restoreThreshold` 的就跳過，試下一台。
 - 被系統調整的裝置，`reason` 會說明原因。
 - 重複傳相同的值（例如已經開啟又傳 `on: true`）不算錯誤，直接回傳目前狀態。
 
@@ -222,7 +237,7 @@
 | 400 | `VALIDATION_ERROR` | `on` 不是 boolean |
 | 404 | `APPLIANCE_NOT_FOUND` | 找不到裝置 |
 | 409 | `APPLIANCE_FAULTED` | 裝置故障中，要先修復；關閉故障裝置不會出錯 |
-| 409 | `UNRESOLVED_OVERLOAD` | 目前已超標且無法解決，拒絕開啟；`details.overload` 是超出的瓦數 |
+| 409 | `UNRESOLVED_OVERLOAD` | 目前已超標且無法解決（`unresolvedOverload` 不是 `null`），拒絕開啟；`details.overload` 是超出的瓦數 |
 
 ### `PUT /api/appliances/:id/priority`
 
@@ -240,8 +255,9 @@
 
 系統的處理：
 
-- 只有在不會一定超標的情況下才接受指定。
-- 之後如果優先裝置之間發生衝突，系統會從最近指定的優先開始撤銷。
+- 接受條件：「不能調整的裝置 + 所有優先裝置 + 這台 + 可降載裝置的降載後用電」不超過上限。被延後的裝置不算；舒適保護啟動時，冷氣用額定用電計算。
+- 接受後如果這台正被延後或降載，會立刻恢復，改調整其他裝置。
+- 之後室溫或用電上限改變，造成優先裝置之間衝突時，系統會從最近指定的優先開始撤銷，`priorityOrder` 變回 `null`。
 - 重複傳相同的值不算錯誤，直接回傳目前狀態。
 
 回傳 `200` Status。
@@ -250,7 +266,18 @@
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | `enabled` 不是 boolean |
 | 404 | `APPLIANCE_NOT_FOUND` | 找不到裝置 |
+| 409 | `APPLIANCE_FAULTED` | 裝置故障中 |
 | 409 | `INSUFFICIENT_POWER` | 指定之後一定會超過上限；`details.shortfall` 是不足的瓦數 |
+
+錯誤範例（熱水器已是優先，再指定烤箱）：
+
+```json
+{
+  "code": "INSUFFICIENT_POWER",
+  "message": "指定為優先後一定會超過上限，不足 1100W",
+  "details": { "shortfall": 1100 }
+}
+```
 
 ## 5. 管理裝置
 
@@ -270,7 +297,8 @@
     "adjustmentOrder": null,
     "requestedOn": true,
     "state": "on",
-    "priorityOrder": null
+    "priorityOrder": null,
+    "reason": null
   }
 ]
 ```
@@ -311,7 +339,8 @@
   "adjustmentOrder": 5,
   "requestedOn": false,
   "state": "off",
-  "priorityOrder": null
+  "priorityOrder": null,
+  "reason": null
 }
 ```
 
@@ -438,13 +467,123 @@
 | 404 | `ROOM_NOT_FOUND` | 找不到房間 |
 | 409 | `ROOM_NOT_EMPTY` | 房間裡還有裝置，要先移走或刪除裝置 |
 
-## 7. 測試介面與決策紀錄（路徑可能會改）
+## 7. 決策紀錄
 
-| Method | 路徑 | 用途 |
+### `GET /api/decisions`
+
+系統做過的決定，最新的在前面。被拒絕的要求也會記錄。
+
+| Query | 型別 | 預設 | 規則 |
+|---|---|---|---|
+| `limit` | number | 50 | 1 到 200 的整數 |
+
+回傳 `200` Decision[]：
+
+```json
+[
+  {
+    "id": 2,
+    "createdAt": "2026-11-22T08:00:05.000Z",
+    "rule": "B2",
+    "ruleName": "自動恢復",
+    "applianceId": 5,
+    "applianceName": "Oven",
+    "action": "restore",
+    "reason": "恢復後總用電 3600W 未超過 4800W，恢復 Oven"
+  },
+  {
+    "id": 1,
+    "createdAt": "2026-11-22T08:00:00.000Z",
+    "rule": "B1",
+    "ruleName": "超標調整",
+    "applianceId": 5,
+    "applianceName": "Oven",
+    "action": "delay",
+    "reason": "總用電 6600W 超過上限 5000W，延後 Oven"
+  }
+]
+```
+
+| 欄位 | 型別 | 說明 |
 |---|---|---|
-| GET | `/api/decisions` | 系統做過的決定紀錄，例如「烤箱因超標被延後」 |
-| POST | `/api/simulation/reset` | 重置成初始狀態 |
-| PUT | `/api/simulation/temperature` | 修改室溫，測試舒適保護 |
-| POST | `/api/simulation/appliances/:id/fault` | 模擬裝置故障 |
-| POST | `/api/simulation/appliances/:id/repair` | 修復故障裝置 |
-| PUT | `/api/simulation/power-limit` | 修改用電上限，用來重現無法解決的超標 |
+| `createdAt` | string | ISO 8601 時間（UTC） |
+| `rule` | string | 規則代號，對應 Proposal：`B1` 超標調整、`B2` 自動恢復、`B3` 舒適保護、`B4` 使用者優先、`B5` 故障處理 |
+| `ruleName` | string | 規則名稱，前端顯示用 |
+| `applianceId` / `applianceName` | number / string \| null | 相關裝置；跟整個家有關、或裝置已被刪除時為 `null` |
+| `action` | string | 系統做了什麼，見下表 |
+| `reason` | string | 給使用者看的說明 |
+
+| `action` | 規則 | 意思 |
+|---|---|---|
+| `delay` / `reduce` | B1 | 延後 / 降載裝置 |
+| `overload-unresolved` | B1 | 全部調整完仍超標 |
+| `reject` | B1 | 無法解決的超標時，拒絕開啟裝置 |
+| `restore` | B2 | 自動恢復裝置 |
+| `comfort-restore` | B3 | 室溫過高，冷氣恢復正常 |
+| `priority-accept` / `priority-reject` / `priority-cancel` | B4 | 接受 / 拒絕 / 取消優先 |
+| `priority-restore` | B4 | 被調整的裝置指定為優先後恢復 |
+| `priority-revoke` | B4 | 衝突時撤銷最近指定的優先 |
+| `fault` / `repair` | B5 | 判定故障 / 修復 |
+
+## 8. 測試介面
+
+給助教重現每條規則用。這些 API 都回傳完整狀態（Status）。
+
+### `POST /api/simulation/reset`
+
+清空所有資料和決策紀錄，回到初始狀態：上限 5000W、室溫 26°C、6 個房間、6 台裝置。
+
+### `PUT /api/simulation/temperature`
+
+修改室溫，用來測試舒適保護。
+
+```json
+{ "indoorTemperature": 29 }
+```
+
+- 室溫**超過**舒適門檻（28°C，剛好 28°C 不算）時，可降載的裝置（冷氣）不能降載；已降載的會恢復正常，超標的話改延後其他裝置，這時用上限判斷，不是 `restoreThreshold`。
+- 恢復冷氣後如果優先裝置之間衝突，會撤銷最近指定的優先。
+
+| 狀態碼 | code | 什麼時候 |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `indoorTemperature` 不是數字 |
+
+### `PUT /api/simulation/power-limit`
+
+修改用電上限，用來重現無法解決的超標。`restoreThreshold` 會跟著變成上限 − 200。
+
+```json
+{ "powerLimit": 1000 }
+```
+
+- 例如上限改成 1000W：冷氣降載後還有 1100W，`unresolvedOverload` 變成 100。
+- 上限降低造成優先裝置衝突時，會撤銷最近指定的優先。
+
+| 狀態碼 | code | 什麼時候 |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `powerLimit` 不是正整數 |
+
+### `POST /api/simulation/appliances/:id/usage`
+
+模擬讀到某台裝置的實際用電，用來測試故障處理。
+
+```json
+{ "power": 3001 }
+```
+
+- `power` **超過**額定用電的 150%（剛好 150% 不算）時，裝置變成 `faulted`、用電 0W、`requestedOn` 變成 `false`，並自動恢復因此有空間的其他裝置。
+- 沒超過就什麼都不改；已經故障的裝置也不會再改變。
+
+| 狀態碼 | code | 什麼時候 |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `power` 不是 0 以上的數字 |
+| 404 | `APPLIANCE_NOT_FOUND` | 找不到裝置 |
+
+### `POST /api/simulation/appliances/:id/repair`
+
+修復故障的裝置。修復後是 `off`，要由使用者重新開啟。
+
+| 狀態碼 | code | 什麼時候 |
+|---|---|---|
+| 404 | `APPLIANCE_NOT_FOUND` | 找不到裝置 |
+| 409 | `APPLIANCE_NOT_FAULTED` | 裝置沒有故障 |

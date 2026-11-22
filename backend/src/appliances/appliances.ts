@@ -12,4 +12,5 @@ export interface Appliance {
     requestedOn: boolean;
     state: ApplianceState;
     priorityOrder: number | null;
+    reason: string | null; // 系統為什麼讓裝置處於目前狀態
 }

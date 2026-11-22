@@ -2,6 +2,7 @@ import { Global, Inject, Module, OnApplicationShutdown } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import { mkdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
+import { migrate } from './migrate.js';
 import { seedIfEmpty } from './seed.js';
 
 export const DATABASE = Symbol(`DATABASE`);
@@ -17,6 +18,7 @@ function openDatabase(): Db {
     const db = new Database(path);
     db.pragma('foreign_keys = ON');
     db.exec(readFileSync(join(import.meta.dirname, 'schema.sql'), 'utf8')) // 建表
+    migrate(db);
     seedIfEmpty(db);
     return db;
 }
