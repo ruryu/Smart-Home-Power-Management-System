@@ -9,6 +9,9 @@ import { evaluate, isComfortActive, type EvaluationContext } from './rules/evalu
 import { totalPower } from './rules/power.js';
 import { priorityShortfall } from './rules/priority.js';
 
+// 用電超過額定用電的幾倍算故障
+const FAULT_RATIO = 1.5;
+
 // 所有會改變用電的操作都經過這裡：先改使用者的要求，再重新計算每台裝置的狀態
 @Injectable()
 export class PowerManagementService {
@@ -81,6 +84,41 @@ export class PowerManagementService {
                 applianceId: id,
                 action: 'priority-accept',
                 reason: `接受 ${appliance.name} 的優先要求`,
+            });
+            this.reevaluate();
+        })();
+    }
+
+    // 故障處理：模擬讀到的用電超過額定用電的 150% 就隔離
+    reportUsage(id: number, power: number): void {
+        const appliance = this.findOrThrow(id);
+        if (appliance.state === 'faulted' || power <= appliance.ratedPower * FAULT_RATIO) return;
+
+        this.db.transaction(() => {
+            this.appliances.markFaulted(id, '用電異常，已停止運作，請至測試介面修復');
+            this.decisions.record({
+                rule: 'B5',
+                applianceId: id,
+                action: 'fault',
+                reason: `${appliance.name} 用電 ${power}W 超過額定用電 ${appliance.ratedPower}W 的 150%，已停止運作`,
+            });
+            this.reevaluate();
+        })();
+    }
+
+    repair(id: number): void {
+        const appliance = this.findOrThrow(id);
+        if (appliance.state !== 'faulted') {
+            throw conflict('APPLIANCE_NOT_FAULTED', '這個裝置沒有故障', { applianceId: id });
+        }
+
+        this.db.transaction(() => {
+            this.appliances.markRepaired(id);
+            this.decisions.record({
+                rule: 'B5',
+                applianceId: id,
+                action: 'repair',
+                reason: `${appliance.name} 已修復，可以重新開啟`,
             });
             this.reevaluate();
         })();

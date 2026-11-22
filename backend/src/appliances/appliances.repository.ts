@@ -90,6 +90,17 @@ export class AppliancesRepository {
         return row.next;
     }
 
+    // 故障時停止運作，並取消使用者的開啟要求，修復後要由使用者重新開啟
+    markFaulted(id: number, reason: string): void {
+        this.db
+          .prepare("UPDATE appliances SET state = 'faulted', requested_on = 0, state_reason = ? WHERE id = ?")
+          .run(reason, id);
+    }
+
+    markRepaired(id: number): void {
+        this.db.prepare("UPDATE appliances SET state = 'off', state_reason = NULL WHERE id = ?").run(id);
+    }
+
     // 寫回系統計算後的狀態
     saveStates(appliances: Appliance[]): void {
         const update = this.db.prepare(

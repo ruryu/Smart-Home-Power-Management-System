@@ -52,6 +52,10 @@ export class StatusService {
             );
         }
 
+        for (const appliance of appliances.filter((item) => item.state === 'faulted')) {
+            warnings.push(`${appliance.name} 用電異常，已停止運作，請至測試介面修復`);
+        }
+
         if (home.indoorTemperature > home.comfortThreshold) {
             warnings.push(`室溫 ${home.indoorTemperature}°C 超過舒適門檻 ${home.comfortThreshold}°C，冷氣不會被降載`);
         }
