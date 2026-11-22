@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS appliances (
     state TEXT NOT NULL DEFAULT 'off'
         CHECK (state IN ('off', 'on', 'delayed', 'reduced', 'faulted')),
     priority_order INTEGER UNIQUE CHECK (priority_order > 0),
+    state_reason TEXT,
     CHECK ((adjustment = 'none') = (adjustment_order IS NULL)),
     CHECK ((adjustment = 'reduce') = (reduced_power IS NOT NULL))
 );

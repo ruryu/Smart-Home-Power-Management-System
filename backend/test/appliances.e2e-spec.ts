@@ -31,6 +31,7 @@ describe('裝置管理 (e2e)', () => {
         requestedOn: false,
         state: 'off',
         priorityOrder: null,
+        reason: null,
       });
     });
 

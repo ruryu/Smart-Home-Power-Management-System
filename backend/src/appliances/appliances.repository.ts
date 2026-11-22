@@ -5,7 +5,7 @@ import type { CreateApplianceInput } from './create-appliance.js';
 import type { UpdateApplianceInput } from './update-appliance.js';
 
 const COLUMNS = `id, room_id, name, rated_power, reduced_power, adjustment,
-                 adjustment_order, requested_on, state, priority_order`;
+                 adjustment_order, requested_on, state, priority_order, state_reason`;
 
 type ApplianceRow = {
     id: number;
@@ -18,6 +18,7 @@ type ApplianceRow = {
     requested_on: number;
     state: ApplianceState;
     priority_order: number | null;
+    state_reason: string | null;
 };
 
 function toAppliance(row: ApplianceRow): Appliance {
@@ -32,6 +33,7 @@ function toAppliance(row: ApplianceRow): Appliance {
         requestedOn: row.requested_on === 1,
         state: row.state,
         priorityOrder: row.priority_order,
+        reason: row.state_reason,
     };
 }
 

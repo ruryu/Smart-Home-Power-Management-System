@@ -13,6 +13,7 @@ function appliance(overrides: Partial<Appliance>): Appliance {
         requestedOn: true,
         state: 'on',
         priorityOrder: null,
+        reason: null,
         ...overrides,
     };
 }
