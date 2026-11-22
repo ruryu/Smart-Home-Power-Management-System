@@ -1,22 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
-import { AppModule } from './../src/app.module.js';
+import { createApp } from './create-app.js';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
-  process.env.DATABASE_PATH = ':memory:';
-
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    app = await createApp();
+  });
 
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
-    await app.init();
+  afterEach(async () => {
+    await app.close();
   });
 
   it('/api/health (GET)', () => {
@@ -24,9 +19,5 @@ describe('AppController (e2e)', () => {
       .get('/api/health')
       .expect(200)
       .expect({ status: 'ok' });
-  });
-
-  afterEach(async () => {
-    await app.close();
   });
 });
