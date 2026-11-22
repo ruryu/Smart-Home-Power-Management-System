@@ -13,6 +13,8 @@ export interface Decision {
 
 export interface EvaluationContext {
     powerLimit: number;
+    // 是否允許撤銷優先：只有室溫、用電上限這類外在條件改變時才允許
+    allowRevoke?: boolean;
 }
 
 export interface EvaluationResult {
@@ -28,16 +30,20 @@ export function evaluate(input: Appliance[], context: EvaluationContext): Evalua
     // 上一次計算就已經無法解決（超標而且沒有能調整的裝置），這次就不重複記錄
     const wasUnresolved = totalPower(input) > context.powerLimit && !input.some(canAdjust);
 
-    applyRequests(appliances);
+    applyRequests(appliances, decisions);
     const adjusted = reduceLoad(appliances, context, decisions);
+    while (context.allowRevoke && totalPower(appliances) > context.powerLimit) {
+        if (!revokeLatestPriority(appliances, context, decisions)) break;
+        reduceLoad(appliances, context, decisions).forEach((id) => adjusted.add(id));
+    }
     restore(appliances, context, adjusted, decisions);
     reportUnresolvedOverload(appliances, context, wasUnresolved, decisions);
 
     return { appliances, decisions };
 }
 
-// 依照使用者的開關要求更新狀態；已被系統調整的裝置先維持原狀
-function applyRequests(appliances: Appliance[]) {
+// 依照使用者的開關要求更新狀態；已被系統調整的裝置先維持原狀，優先裝置除外
+function applyRequests(appliances: Appliance[], decisions: Decision[]) {
     for (const appliance of appliances) {
         if (appliance.state === 'faulted') continue;
         if (!appliance.requestedOn) {
@@ -51,11 +57,22 @@ function applyRequests(appliances: Appliance[]) {
             appliance.state = 'on';
             appliance.reason = null;
         }
+        if (appliance.priorityOrder !== null && (appliance.state === 'delayed' || appliance.state === 'reduced')) {
+            appliance.state = 'on';
+            appliance.reason = '已指定為優先，維持正常運轉';
+            decisions.push({
+                rule: 'B4',
+                applianceId: appliance.id,
+                action: 'priority-restore',
+                reason: `${appliance.name} 已指定為優先，恢復正常運轉`,
+            });
+        }
     }
 }
 
+// 優先裝置不會被調整
 function canAdjust(appliance: Appliance): boolean {
-    return appliance.adjustment !== 'none' && appliance.state === 'on';
+    return appliance.adjustment !== 'none' && appliance.state === 'on' && appliance.priorityOrder === null;
 }
 
 // 超標調整：總用電超過上限時，依調整順序延後或降載，降到上限以內就停止
@@ -92,6 +109,26 @@ function reduceLoad(appliances: Appliance[], context: EvaluationContext, decisio
         adjusted.add(appliance.id);
     }
     return adjusted;
+}
+
+// 使用者優先衝突：從最近指定的優先開始撤銷，只撤銷撤銷後能被調整的裝置
+function revokeLatestPriority(appliances: Appliance[], context: EvaluationContext, decisions: Decision[]): boolean {
+    const latest = appliances
+        .filter(
+            (appliance) =>
+                appliance.priorityOrder !== null && appliance.adjustment !== 'none' && appliance.state === 'on',
+        )
+        .sort((a, b) => (b.priorityOrder ?? 0) - (a.priorityOrder ?? 0))[0];
+    if (!latest) return false;
+
+    latest.priorityOrder = null;
+    decisions.push({
+        rule: 'B4',
+        applianceId: latest.id,
+        action: 'priority-revoke',
+        reason: `總用電 ${totalPower(appliances)}W 超過上限 ${context.powerLimit}W，撤銷最近指定的優先：${latest.name}`,
+    });
+    return true;
 }
 
 // 自動恢復：依調整的相反順序恢復，恢復後總用電不能超過「上限 − 200W」；

@@ -169,3 +169,68 @@ describe('evaluate：自動恢復', () => {
         expect(result.decisions.every((decision) => decision.rule === 'B1')).toBe(true);
     });
 });
+
+describe('evaluate：使用者優先', () => {
+    it('超標時跳過優先裝置，改調整下一台', () => {
+        const result = evaluate(
+            withChanges({
+                4: { requestedOn: true },
+                5: { requestedOn: true },
+                6: { requestedOn: true, priorityOrder: 1 },
+            }),
+            context,
+        );
+        // 洗衣機是優先，跳過；延後烤箱後 1600 + 3000 + 500 = 5100，再延後熱水器到 2100W
+        expect(states(result.appliances)).toMatchObject({
+            'Washing Machine': 'on',
+            Oven: 'delayed',
+            'Water Heater': 'delayed',
+        });
+        expect(totalPower(result.appliances)).toBe(2100);
+    });
+
+    it('被延後的裝置指定優先後立刻恢復，改延後其他裝置', () => {
+        const result = evaluate(
+            withChanges({
+                4: { requestedOn: true, state: 'on' },
+                5: { requestedOn: true, state: 'delayed', priorityOrder: 1 },
+            }),
+            context,
+        );
+        expect(result.appliances[4]).toMatchObject({ state: 'on', reason: '已指定為優先，維持正常運轉' });
+        expect(result.appliances[3].state).toBe('delayed');
+        expect(result.decisions.map((decision) => [decision.rule, decision.action])).toEqual([
+            ['B4', 'priority-restore'],
+            ['B1', 'delay'],
+        ]);
+    });
+
+    it('外在條件改變造成衝突時，從最近指定的優先開始撤銷', () => {
+        const input = withChanges({
+            4: { requestedOn: true, priorityOrder: 1 },
+            5: { requestedOn: true, priorityOrder: 2 },
+        });
+        // 上限降到 4200W：1600 + 3000 + 2000 = 6600，冷氣降載後 6100W，
+        // 撤銷最近指定的烤箱並延後，降到 4100W；熱水器的優先保留
+        const result = evaluate(input, { powerLimit: 4200, allowRevoke: true });
+        expect(result.appliances[4]).toMatchObject({ priorityOrder: null, state: 'delayed' });
+        expect(result.appliances[3]).toMatchObject({ priorityOrder: 1, state: 'on' });
+        expect(totalPower(result.appliances)).toBe(4100);
+        expect(result.decisions.map((decision) => [decision.rule, decision.applianceId, decision.action])).toEqual([
+            ['B1', 3, 'reduce'],
+            ['B4', 5, 'priority-revoke'],
+            ['B1', 5, 'delay'],
+        ]);
+    });
+
+    it('沒有允許撤銷時，優先衝突會變成無法解決的超標', () => {
+        const input = withChanges({
+            4: { requestedOn: true, priorityOrder: 1 },
+            5: { requestedOn: true, priorityOrder: 2 },
+        });
+        const result = evaluate(input, { powerLimit: 4000 });
+        expect(result.appliances[4].priorityOrder).toBe(2);
+        expect(result.decisions.at(-1)?.action).toBe('overload-unresolved');
+    });
+});
+
