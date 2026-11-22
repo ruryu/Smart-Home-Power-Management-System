@@ -52,6 +52,10 @@ export class StatusService {
             );
         }
 
+        if (home.indoorTemperature > home.comfortThreshold) {
+            warnings.push(`室溫 ${home.indoorTemperature}°C 超過舒適門檻 ${home.comfortThreshold}°C，冷氣不會被降載`);
+        }
+
         const adjusted = appliances
             .filter((appliance) => ADJUSTED_LABELS[appliance.state])
             .map((appliance) => `${appliance.name}（${ADJUSTED_LABELS[appliance.state]}）`);

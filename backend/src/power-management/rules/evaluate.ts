@@ -13,6 +13,9 @@ export interface Decision {
 
 export interface EvaluationContext {
     powerLimit: number;
+    // 舒適保護：室溫超過門檻時，可降載的裝置（冷氣）不能降載
+    indoorTemperature?: number;
+    comfortThreshold?: number;
     // 是否允許撤銷優先：只有室溫、用電上限這類外在條件改變時才允許
     allowRevoke?: boolean;
 }
@@ -28,9 +31,11 @@ export function evaluate(input: Appliance[], context: EvaluationContext): Evalua
     const appliances = input.map((appliance) => ({ ...appliance }));
     const decisions: Decision[] = [];
     // 上一次計算就已經無法解決（超標而且沒有能調整的裝置），這次就不重複記錄
-    const wasUnresolved = totalPower(input) > context.powerLimit && !input.some(canAdjust);
+    const wasUnresolved =
+        totalPower(input) > context.powerLimit && !input.some((appliance) => canAdjust(appliance, context));
 
     applyRequests(appliances, decisions);
+    applyComfortProtection(appliances, context, decisions);
     const adjusted = reduceLoad(appliances, context, decisions);
     while (context.allowRevoke && totalPower(appliances) > context.powerLimit) {
         if (!revokeLatestPriority(appliances, context, decisions)) break;
@@ -70,9 +75,43 @@ function applyRequests(appliances: Appliance[], decisions: Decision[]) {
     }
 }
 
-// 優先裝置不會被調整
-function canAdjust(appliance: Appliance): boolean {
-    return appliance.adjustment !== 'none' && appliance.state === 'on' && appliance.priorityOrder === null;
+export function isComfortActive(context: EvaluationContext): boolean {
+    return (
+        context.indoorTemperature !== undefined &&
+        context.comfortThreshold !== undefined &&
+        context.indoorTemperature > context.comfortThreshold
+    );
+}
+
+// 舒適保護啟動時，可降載的裝置受保護
+function isComfortProtected(appliance: Appliance, context: EvaluationContext): boolean {
+    return appliance.adjustment === 'reduce' && isComfortActive(context);
+}
+
+// 優先裝置、受舒適保護的裝置不會被調整
+function canAdjust(appliance: Appliance, context: EvaluationContext): boolean {
+    return (
+        appliance.adjustment !== 'none' &&
+        appliance.state === 'on' &&
+        appliance.priorityOrder === null &&
+        !isComfortProtected(appliance, context)
+    );
+}
+
+// 舒適保護：已降載的冷氣恢復正常；之後超標的話改由其他裝置調整，用上限判斷而不是恢復門檻
+function applyComfortProtection(appliances: Appliance[], context: EvaluationContext, decisions: Decision[]) {
+    for (const appliance of appliances) {
+        if (!isComfortProtected(appliance, context) || appliance.state !== 'reduced') continue;
+
+        appliance.state = 'on';
+        appliance.reason = `室溫 ${context.indoorTemperature}°C 超過 ${context.comfortThreshold}°C，${appliance.name} 維持正常運轉`;
+        decisions.push({
+            rule: 'B3',
+            applianceId: appliance.id,
+            action: 'comfort-restore',
+            reason: `室溫 ${context.indoorTemperature}°C 超過舒適門檻 ${context.comfortThreshold}°C，${appliance.name} 恢復到 ${appliance.ratedPower}W`,
+        });
+    }
 }
 
 // 超標調整：總用電超過上限時，依調整順序延後或降載，降到上限以內就停止
@@ -80,7 +119,7 @@ function reduceLoad(appliances: Appliance[], context: EvaluationContext, decisio
     const adjusted = new Set<number>();
     const limit = context.powerLimit;
     const candidates = appliances
-        .filter(canAdjust)
+        .filter((appliance) => canAdjust(appliance, context))
         .sort((a, b) => (a.adjustmentOrder ?? 0) - (b.adjustmentOrder ?? 0));
 
     for (const appliance of candidates) {
@@ -116,7 +155,10 @@ function revokeLatestPriority(appliances: Appliance[], context: EvaluationContex
     const latest = appliances
         .filter(
             (appliance) =>
-                appliance.priorityOrder !== null && appliance.adjustment !== 'none' && appliance.state === 'on',
+                appliance.priorityOrder !== null &&
+                appliance.adjustment !== 'none' &&
+                appliance.state === 'on' &&
+                !isComfortProtected(appliance, context),
         )
         .sort((a, b) => (b.priorityOrder ?? 0) - (a.priorityOrder ?? 0))[0];
     if (!latest) return false;

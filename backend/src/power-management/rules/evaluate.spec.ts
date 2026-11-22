@@ -234,3 +234,74 @@ describe('evaluate：使用者優先', () => {
     });
 });
 
+describe('evaluate：舒適保護', () => {
+    const hot = { powerLimit: 5000, indoorTemperature: 29, comfortThreshold: 28 };
+
+    it('室溫超過門檻時，已降載的冷氣恢復正常', () => {
+        const result = evaluate(withChanges({ 3: { state: 'reduced' } }), hot);
+        expect(result.appliances[2]).toMatchObject({
+            state: 'on',
+            reason: '室溫 29°C 超過 28°C，Air Conditioner 維持正常運轉',
+        });
+        expect(result.decisions[0]).toMatchObject({ rule: 'B3', applianceId: 3, action: 'comfort-restore' });
+    });
+
+    it('剛好等於門檻不算超過', () => {
+        const result = evaluate(withChanges({}), { powerLimit: 1500, indoorTemperature: 28, comfortThreshold: 28 });
+        expect(result.appliances[2].state).toBe('reduced');
+    });
+
+    it('冷氣恢復後超標，改延後其他裝置', () => {
+        const result = evaluate(
+            withChanges({
+                3: { state: 'reduced' },
+                4: { requestedOn: true, state: 'on' },
+                6: { requestedOn: true, state: 'on' },
+            }),
+            hot,
+        );
+        // 300 + 800 + 3000 + 500 = 4600，冷氣恢復到 1300 變 5100W，延後洗衣機回到 4600W
+        expect(states(result.appliances)).toMatchObject({ 'Air Conditioner': 'on', 'Washing Machine': 'delayed' });
+        expect(totalPower(result.appliances)).toBe(4600);
+    });
+
+    it('冷氣用上限判斷，不是用恢復門檻', () => {
+        const result = evaluate(
+            withChanges({ 3: { state: 'reduced' }, 4: { requestedOn: true, state: 'on' }, 6: { requestedOn: true, state: 'on' } }),
+            { ...hot, powerLimit: 5200 },
+        );
+        // 冷氣恢復後 5100W：超過恢復門檻 5000W，但沒超過上限 5200W，所以不用延後其他裝置
+        expect(totalPower(result.appliances)).toBe(5100);
+        expect(states(result.appliances)).toMatchObject({ 'Air Conditioner': 'on', 'Washing Machine': 'on' });
+    });
+
+    it('超標時不降載冷氣，改延後其他裝置', () => {
+        const result = evaluate(
+            withChanges({ 4: { requestedOn: true }, 5: { requestedOn: true }, 6: { requestedOn: true } }),
+            { ...hot, powerLimit: 3500 },
+        );
+        // 7100W 依序延後洗衣機、烤箱、熱水器到 1600W，冷氣維持 1300W
+        expect(states(result.appliances)).toMatchObject({ 'Air Conditioner': 'on', 'Water Heater': 'delayed' });
+        expect(totalPower(result.appliances)).toBe(1600);
+    });
+
+    it('室溫升高造成優先衝突時，撤銷最近指定的優先', () => {
+        const result = evaluate(
+            withChanges({
+                3: { state: 'reduced' },
+                4: { requestedOn: true, state: 'on', priorityOrder: 1 },
+                6: { requestedOn: true, state: 'on', priorityOrder: 2 },
+            }),
+            { ...hot, allowRevoke: true },
+        );
+        // 冷氣恢復後 5100W，熱水器和洗衣機都是優先；撤銷最近的洗衣機並延後，回到 4600W
+        expect(result.appliances[5]).toMatchObject({ priorityOrder: null, state: 'delayed' });
+        expect(result.appliances[3]).toMatchObject({ priorityOrder: 1, state: 'on' });
+        expect(result.decisions.map((decision) => [decision.rule, decision.action])).toEqual([
+            ['B3', 'comfort-restore'],
+            ['B4', 'priority-revoke'],
+            ['B1', 'delay'],
+        ]);
+    });
+});
+

@@ -5,7 +5,7 @@ import { conflict, notFound } from '../common/api-error.js';
 import { DATABASE, type Db } from '../database/database.module.js';
 import { DecisionsRepository } from '../decisions/decisions.repository.js';
 import { HomeRepository } from '../home/home.repository.js';
-import { evaluate } from './rules/evaluate.js';
+import { evaluate, isComfortActive, type EvaluationContext } from './rules/evaluate.js';
 import { totalPower } from './rules/power.js';
 import { priorityShortfall } from './rules/priority.js';
 
@@ -61,8 +61,9 @@ export class PowerManagementService {
             throw conflict('APPLIANCE_FAULTED', '裝置故障中，要先到測試介面修復', { applianceId: id });
         }
 
-        const { powerLimit } = this.home.get();
-        const shortfall = priorityShortfall(this.appliances.findAll(), id, powerLimit);
+        const context = this.context();
+        const { powerLimit } = context;
+        const shortfall = priorityShortfall(this.appliances.findAll(), id, powerLimit, isComfortActive(context));
         if (shortfall > 0) {
             this.decisions.record({
                 rule: 'B4',
@@ -93,12 +94,21 @@ export class PowerManagementService {
         })();
     }
 
-    // 重新計算所有裝置的狀態，並記錄系統做的決定
-    reevaluate(): void {
-        const home = this.home.get();
-        const result = evaluate(this.appliances.findAll(), { powerLimit: home.powerLimit });
+    // 重新計算所有裝置的狀態，並記錄系統做的決定。
+    // allowRevoke：室溫、用電上限改變時才允許撤銷優先
+    reevaluate(allowRevoke = false): void {
+        const result = evaluate(this.appliances.findAll(), { ...this.context(), allowRevoke });
         this.appliances.saveStates(result.appliances);
         this.decisions.recordAll(result.decisions);
+    }
+
+    private context(): EvaluationContext {
+        const home = this.home.get();
+        return {
+            powerLimit: home.powerLimit,
+            indoorTemperature: home.indoorTemperature,
+            comfortThreshold: home.comfortThreshold,
+        };
     }
 
     private findOrThrow(id: number): Appliance {

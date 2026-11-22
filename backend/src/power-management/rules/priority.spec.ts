@@ -40,4 +40,9 @@ describe('priorityShortfall', () => {
         const faulted = appliances.map((item) => (item.id === 4 ? { ...item, state: 'faulted' as const } : item));
         expect(priorityShortfall(faulted, 5, 5000)).toBe(0);
     });
+
+    it('舒適保護啟動時，冷氣用額定用電計算', () => {
+        // 200 + 100 + 1300 + 3000 + 500 = 5100，不足 100W
+        expect(priorityShortfall(appliances, 6, 5000, true)).toBe(100);
+    });
 });
