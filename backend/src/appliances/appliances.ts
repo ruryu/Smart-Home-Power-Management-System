@@ -1,5 +1,8 @@
-export type ApplianceState = 'off' | 'on' | 'delayed' | 'reduced' | 'faulted';
-export type Adjustment = 'none' | 'delay' | 'reduce';
+export const APPLIANCE_STATES = ['off', 'on', 'delayed', 'reduced', 'faulted'] as const;
+export const ADJUSTMENTS = ['none', 'delay', 'reduce'] as const;
+
+export type ApplianceState = (typeof APPLIANCE_STATES)[number];
+export type Adjustment = (typeof ADJUSTMENTS)[number];
 
 export interface Appliance {
     id: number;
