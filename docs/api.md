@@ -2,6 +2,8 @@
 
 前後端共用的約定。改 API 前先改這份文件，再改程式碼。
 
+啟動後端後，也可以打開 `http://localhost:3000/api/docs` 用 Swagger 瀏覽和試打所有 API；OpenAPI JSON 在 `/api/docs-json`。
+
 ## 0. 共通規則
 
 - 所有 API 都以 `/api` 開頭，例如 `http://localhost:3000/api/status`。

@@ -1,6 +1,6 @@
 import { validationError } from '../common/api-error.js';
 import { asObject, isNonEmptyString, isPositiveInteger } from '../common/validation.js';
-import type { Adjustment } from './appliances.js';
+import { ADJUSTMENTS, type Adjustment } from './appliances.js';
 
 export interface CreateApplianceInput {
     roomId: number;
@@ -9,8 +9,6 @@ export interface CreateApplianceInput {
     adjustment: Adjustment;
     reducedPower: number | null;
 }
-
-const ADJUSTMENTS: Adjustment[] = ['none', 'delay', 'reduce'];
 
 export function parseCreateAppliance(body: unknown): CreateApplianceInput {
     const input = asObject(body);
